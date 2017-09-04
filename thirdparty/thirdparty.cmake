@@ -601,7 +601,7 @@ if(WIN32)
   if(NOT EXISTS ${indiclient_dir})
     # unzip the dependency
     execute_process(
-      COMMAND ${CMAKE_COMMAND} -E tar xf ${CMAKE_SOURCE_DIR}/thirdparty/indiclient-d71f1c1d-win32.zip --format=zip
+      COMMAND ${CMAKE_COMMAND} -E tar xf ${CMAKE_SOURCE_DIR}/thirdparty/indiclient-b330012b-win32.zip --format=zip
         WORKING_DIRECTORY ${indiclient_root})
   endif()
   include_directories(${indiclient_dir}/include)
@@ -629,10 +629,6 @@ else()   # Linux or OSX
   # INDI depends on libz
   find_package(ZLIB REQUIRED)
   set(PHD_LINK_EXTERNAL ${PHD_LINK_EXTERNAL} ${ZLIB_LIBRARIES})
-  
-  # INDI depends on Nova
-  find_library(NOVALIB REQUIRED NAMES nova)
-  set(PHD_LINK_EXTERNAL ${PHD_LINK_EXTERNAL} nova)
   
 endif()
 
@@ -729,6 +725,7 @@ if(WIN32)
   set(PHD_COPY_EXTERNAL_ALL ${PHD_COPY_EXTERNAL_ALL}  ${PHD_PROJECT_ROOT_DIR}/WinLibs/DSCI.dll)
 
   # SBIGUDrv
+  add_definitions(-DHAVE_SBIG_CAMERA=1)
   set(PHD_LINK_EXTERNAL     ${PHD_LINK_EXTERNAL}      ${PHD_PROJECT_ROOT_DIR}/cameras/SBIGUDrv.lib)
   #set(PHD_COPY_EXTERNAL_ALL ${PHD_COPY_EXTERNAL_ALL} ${PHD_PROJECT_ROOT_DIR}/WinLibs/SBIGUDrv.dll) # this is delay load, the dll does not exist in the sources
 
@@ -795,7 +792,7 @@ endif()
 #############################################
 # SBIG specific dependencies if installed part of system
 #############################################
-if(SBIG_SYSTEM)
+if(SBIG_SYSTEM AND UNIX)
 
   # Assumes SBIG's Universal driver has been loaded into the system and placed
   # in a standard path. (e.g. sbigudrv.h in /usr/include, libsbigudrv.so in /usr/lib )
@@ -809,7 +806,8 @@ if(SBIG_SYSTEM)
   #  g++ -L ${WORKDIR}/LinuxDevKit/x86/c/lib64/ ${sharedlink} -o libSBIG=1.33.0 csbigimg.o csbigcam.o -lm -lsbigudrv -lusb -lcfitsio
   #  ar -cvq libSBIG.a csbigimg.o csbigcam.o
 
-
+  add_definitions(-DHAVE_SBIG_CAMERA=1)
+  add_definitions("-DTARGET=7") 
   message(STATUS "Finding SBIG Univeral Drivers on system")
   find_path(SBIG_INCLUDE_DIR sbigudrv.h)
   find_library(SBIG_LIBRARIES NAMES SBIG)
@@ -817,10 +815,7 @@ if(SBIG_SYSTEM)
   include_directories(${SBIG_INCLUDE_DIR})
   
   set(PHD_LINK_EXTERNAL ${PHD_LINK_EXTERNAL} SBIG sbigudrv)
- 
-  if(UNIX)
-    add_definitions("-DTARGET=7") 
-  endif()
+
 endif()
 
 #############################################
@@ -848,6 +843,7 @@ if(APPLE)
   find_library( sbigudFramework
                 NAMES SBIGUDrv
                 PATHS ${thirdparty_dir}/frameworks)
+  add_definitions(-DHAVE_SBIG_CAMERA=1)
   if(NOT sbigudFramework)
     message(FATAL_ERROR "Cannot find the SBIGUDrv drivers")
   endif()

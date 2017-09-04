@@ -95,15 +95,13 @@ private:
     int m_maxSteps;
     int SxAoVersion;
 
-    bool Step(GUIDE_DIRECTION direction, int steps) override;
+    bool Center(void) override;
+    STEP_RESULT Step(GUIDE_DIRECTION direction, int steps) override;
     int MaxPosition(GUIDE_DIRECTION direction) const override;
     bool SetMaxPosition(int steps) override;
     bool IsAtLimit(GUIDE_DIRECTION direction, bool *isAtLimit) override;
 
     bool FirmwareVersion(int *version);
-    bool Unjam(void);
-    bool Center(void);
-    bool Center(unsigned char cmd);
 
     bool    ST4HasGuideOutput(void) override;
     bool    ST4HostConnected(void) override;
@@ -114,7 +112,7 @@ protected:
     // INDI parts
     void newDevice(INDI::BaseDevice *dp) override;
 #ifndef INDI_PRE_1_0_0
-    void removeDevice(INDI::BaseDevice *dp) override {};
+    void removeDevice(INDI::BaseDevice *dp) override;
 #endif
     void newProperty(INDI::Property *property) override;
     void removeProperty(INDI::Property *property) override {};
@@ -134,10 +132,12 @@ public:
     // StepGuider parts
     bool Connect(void) override;
     bool Disconnect(void) override;
-    void ShowPropertyDialog(void) override; // just calling INDI SetupDialog()
     bool HasNonGuiMove(void) override;
     bool HasSetupDialog(void) const override;
     void SetupDialog() override;
+
+private:
+    void ShowPropertyDialog(void) override;
 };
 
 #endif // #if defined(STEPGUIDER_SXAO_INDI)

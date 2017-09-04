@@ -112,7 +112,7 @@ void Camera_INDIClass::CheckState()
 void Camera_INDIClass::newDevice(INDI::BaseDevice *dp)
 {
   if (strcmp(dp->getDeviceName(), INDICameraName.mb_str(wxConvUTF8)) == 0) {
-      // The camera object, maybe this can be useful in the future
+      // The camera object
       camera_device = dp;
   }
 }
@@ -201,7 +201,11 @@ void Camera_INDIClass::newProperty(INDI::Property *property)
 
     if (Proptype == INDI_BLOB) {
         //printf("Found BLOB property for %s %s\n", DeviName, PropName);
-        has_blob = 1;
+        if (PropName==INDICameraBlobName) {
+           has_blob = 1;
+           // set option to receive blob and messages for the selected CCD
+           setBLOBMode(B_ALSO, INDICameraName.mb_str(wxConvUTF8), INDICameraBlobName.mb_str(wxConvUTF8));       
+        }
     }
     else if (PropName == INDICameraCCDCmd + "EXPOSURE" && Proptype == INDI_NUMBER) {
         //printf("Found CCD_EXPOSURE for %s %s\n", DeviName, PropName);
@@ -240,6 +244,11 @@ void Camera_INDIClass::newProperty(INDI::Property *property)
         connection_prop = property->getSwitch();
         ISwitch *connectswitch = IUFindSwitch(connection_prop,"CONNECT");
         Connected = (connectswitch->s == ISS_ON);
+    }
+    else if (PropName == "DRIVER_INFO" && Proptype == INDI_TEXT) {
+        if (camera_device->getDriverInterface() & INDI::BaseDevice::GUIDER_INTERFACE) {
+          m_hasGuideOutput = true; // Device supports guiding
+        }
     }
     else if (PropName == "TELESCOPE_TIMED_GUIDE_NS" && Proptype == INDI_NUMBER){
         pulseGuideNS_prop = property->getNumber();
@@ -294,9 +303,12 @@ wxByte Camera_INDIClass::BitsPerPixel()
 
 bool Camera_INDIClass::Disconnect()
 {
-    // Disconnect from server
-    if (disconnectServer()){
-        return false;
+    if (ready) {
+       // Disconnect from server
+       if (disconnectServer()){
+          return false;
+       }
+       else return true;
     }
     else return true;
 }
@@ -330,15 +342,12 @@ void Camera_INDIClass::serverConnected()
         ::wxSafeYield();
     }
     modal = false;
-    // In case we not get all the required properties or connection to the device failed
     if (ready)
     {
         Connected = true;
-        m_hasGuideOutput = (pulseGuideNS_prop && pulseGuideEW_prop);
-        // set option to receive blob and messages for the selected CCD
-        setBLOBMode(B_ALSO, INDICameraName.mb_str(wxConvUTF8), INDICameraBlobName.mb_str(wxConvUTF8));
     }
     else {
+        // In case we not get all the required properties or connection to the device failed
         pFrame->Alert(wxString::Format(_("Cannot connect to camera %s"), INDICameraName));
         Connected = false;
         Disconnect();
@@ -347,11 +356,19 @@ void Camera_INDIClass::serverConnected()
 
 void Camera_INDIClass::serverDisconnected(int exit_code)
 {
-   // in case the connection lost we must reset the client socket
-   Disconnect();
    // after disconnection we reset the connection status and the properties pointers
    ClearStatus();
+   // in case the connection lost we must reset the client socket
+   if (exit_code==-1) DisconnectWithAlert("INDI server disconnected",NO_RECONNECT);
 }
+
+#ifndef INDI_PRE_1_0_0
+void Camera_INDIClass::removeDevice(INDI::BaseDevice *dp)
+{
+   ClearStatus();
+   DisconnectWithAlert("INDI camera disconnected",NO_RECONNECT);
+}
+#endif
 
 void Camera_INDIClass::ShowPropertyDialog()
 {

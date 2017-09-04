@@ -232,14 +232,16 @@ bool StepGuiderSxAoINDI::Connect(void)
 
 bool StepGuiderSxAoINDI::Disconnect(void)
 {
-    if (disconnectServer() ) { // Disconnect from INDI server
-        if (ready) {
-            Debug.AddLine(wxString::Format("StepGuiderSxAoINDI::Disconnect"));
-            ready = false;
-            StepGuider::Disconnect();
-        }
-        return false;
-    } else return true;
+    if (ready) {
+       if (disconnectServer() ) { // Disconnect from INDI server
+          Debug.AddLine(wxString::Format("StepGuiderSxAoINDI::Disconnect"));
+          ClearStatus();
+          StepGuider::Disconnect();
+          return false;
+       } 
+       else return true;
+    }
+    else return true;
 }
 
 bool StepGuiderSxAoINDI::HasSetupDialog(void) const
@@ -320,55 +322,67 @@ void StepGuiderSxAoINDI::serverConnected(void)
 
 void StepGuiderSxAoINDI::serverDisconnected(int exit_code)
 {
-    // in case the connection is lost we must reset the client socket
-    Disconnect();
-    if (ready) {
-        Debug.AddLine(wxString::Format("StepGuiderSxAoINDI::serverDisconnected disconnecting StepGuider"));
-        ready = false;
-        StepGuider::Disconnect();
-    }
     // after disconnection we reset the connection status and the properties pointers
     ClearStatus();
+    if (exit_code==-1) {
+       // in case the connection is lost we must reset the client socket
+       Disconnect();
+       Debug.AddLine(wxString::Format("StepGuiderSxAoINDI::serverDisconnected disconnecting StepGuider"));
+       StepGuider::Disconnect();
+    }
 }
 
-bool StepGuiderSxAoINDI::Step(GUIDE_DIRECTION direction, int steps)
+#ifndef INDI_PRE_1_0_0
+void StepGuiderSxAoINDI::removeDevice(INDI::BaseDevice *dp)
 {
-    bool bError = true;
-    if (aoNS_prop && aoWE_prop) {
-        bError = false;
-        try {
-            switch (direction) {
-            case NORTH:
-                aoN_prop->value = steps;
-                aoS_prop->value = 0;
-                sendNewNumber(aoNS_prop);
-                break;
-            case SOUTH:
-                aoN_prop->value = 0;
-                aoS_prop->value = steps;
-                sendNewNumber(aoNS_prop);
-                break;
-            case EAST:
-                aoW_prop->value = 0;
-                aoE_prop->value = steps;
-                sendNewNumber(aoWE_prop);
-                break;
-            case WEST:
-                aoW_prop->value = steps;
-                aoE_prop->value = 0;
-                sendNewNumber(aoWE_prop);
-                break;
-            default:
-                throw ERROR_INFO("StepGuiderSxAO::step: invalid direction");
-                break;
-            }
-        } catch (const wxString& Msg) {
-            POSSIBLY_UNUSED(Msg);
-            bError = true;
+   ClearStatus();
+   Disconnect();
+   StepGuider::Disconnect();
+}
+#endif
+
+StepGuider::STEP_RESULT StepGuiderSxAoINDI::Step(GUIDE_DIRECTION direction, int steps)
+{
+    STEP_RESULT result = STEP_OK;
+
+    try
+    {
+        if (!aoNS_prop || !aoWE_prop)
+            throw ERROR_INFO("StepGuiderSxAO::step: missing ns or we property");
+
+        switch (direction) {
+        case NORTH:
+            aoN_prop->value = steps;
+            aoS_prop->value = 0;
+            sendNewNumber(aoNS_prop);
+            break;
+        case SOUTH:
+            aoN_prop->value = 0;
+            aoS_prop->value = steps;
+            sendNewNumber(aoNS_prop);
+            break;
+        case EAST:
+            aoW_prop->value = 0;
+            aoE_prop->value = steps;
+            sendNewNumber(aoWE_prop);
+            break;
+        case WEST:
+            aoW_prop->value = steps;
+            aoE_prop->value = 0;
+            sendNewNumber(aoWE_prop);
+            break;
+        default:
+            throw ERROR_INFO("StepGuiderSxAO::step: invalid direction");
+            break;
         }
     }
+    catch (const wxString& Msg)
+    {
+        POSSIBLY_UNUSED(Msg);
+        result = STEP_ERROR;
+    }
 
-    return bError;
+    return result;
 }
 
 int StepGuiderSxAoINDI::MaxPosition(GUIDE_DIRECTION direction) const
@@ -448,31 +462,18 @@ bool StepGuiderSxAoINDI::FirmwareVersion(int *version)
     return bError;
 }
 
-bool StepGuiderSxAoINDI::Unjam(void)
-{
-    Debug.AddLine(wxString::Format("StepGuiderSxAoINDI::Unjam"));
-    if (aoCenterUnjam_prop) {
-        aoUnjam_prop->s = ISS_ON;
-        sendNewSwitch(aoCenterUnjam_prop);
-        return false;
-    }
-    return true;
-}
-
 bool StepGuiderSxAoINDI::Center(void)
 {
     Debug.AddLine(wxString::Format("StepGuiderSxAoINDI::Center"));
     if (aoCenterUnjam_prop) {
         aoCenter_prop->s = ISS_ON;
+        aoUnjam_prop->s = ISS_OFF;
         sendNewSwitch(aoCenterUnjam_prop);
+        // TODO: detect failure of center and try Unjam
+        ZeroCurrentPosition();
         return false;
     }
     return true;
-}
-
-bool StepGuiderSxAoINDI::Center(unsigned char cmd)
-{
-    return Center();
 }
 
 bool StepGuiderSxAoINDI::ST4HasGuideOutput(void)

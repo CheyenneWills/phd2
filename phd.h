@@ -78,7 +78,7 @@
 
 #define APPNAME _T("PHD2 Guiding")
 #define PHDVERSION _T("2.6.3")
-#define PHDSUBVER _T("dev7")
+#define PHDSUBVER _T("dev8")
 #define FULLVER PHDVERSION PHDSUBVER
 
 #if defined (__WINDOWS__)
@@ -96,16 +96,19 @@ WX_DEFINE_ARRAY_INT(int, ArrayOfInts);
 WX_DEFINE_ARRAY_DOUBLE(double, ArrayOfDbl);
 
 #if defined (__WINDOWS__)
+#define PHD_OSNAME _T("Windows")
 #define PATHSEPCH '\\'
 #define PATHSEPSTR "\\"
 #endif
 
 #if defined (__APPLE__)
+#define PHD_OSNAME _T("OSX")
 #define PATHSEPCH '/'
 #define PATHSEPSTR "/"
 #endif
 
 #if defined (__WXGTK__)
+#define PHD_OSNAME _T("Linux")
 #define PATHSEPCH '/'
 #define PATHSEPSTR _T("/")
 #endif
