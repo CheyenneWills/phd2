@@ -67,10 +67,14 @@ static double NUDGE_TOLERANCE = 2.0;
 const double Scope::DEC_COMP_LIMIT = M_PI / 2.0 * 2.0 / 3.0;   // 60 degrees
 
 Scope::Scope(void)
-    : m_raLimitReachedDirection(NONE),
-      m_raLimitReachedCount(0),
-      m_decLimitReachedDirection(NONE),
-      m_decLimitReachedCount(0)
+    :
+    m_maxDecDuration(0),
+    m_maxRaDuration(0),
+    m_decGuideMode(DEC_NONE),
+    m_raLimitReachedDirection(NONE),
+    m_raLimitReachedCount(0),
+    m_decLimitReachedDirection(NONE),
+    m_decLimitReachedCount(0)
 {
     m_calibrationSteps = 0;
     m_graphControlPane = NULL;
@@ -793,18 +797,18 @@ void Scope::SanityCheckCalibration(const Calibration& oldCal, const CalibrationD
         if (m_lastCalibrationIssue == CI_None && oldCal.isValid &&
             fabs(oldDetails.imageScale - newDetails.imageScale) < 0.1 && (fabs(degrees(oldCal.xAngle - newCal.xAngle)) < 5.0))
         {
-            double newDecRate = newCal.yRate;
-            if (newDecRate != 0.)
+            if (newCal.yRate != CALIBRATION_RATE_UNCALIBRATED && oldCal.yRate != CALIBRATION_RATE_UNCALIBRATED)
             {
-                if (fabs(1.0 - (oldCal.yRate / newDecRate)) > CAL_ALERT_DECRATE_DIFFERENCE)
+                double newDecRate = newCal.yRate;
+                if (newDecRate != 0.)
                 {
-                    m_lastCalibrationIssue = CI_Different;
-                    detailInfo = wxString::Format("Current/previous Dec rate ratio is %0.3f", oldCal.yRate / newDecRate);
+                    if (fabs(1.0 - (oldCal.yRate / newDecRate)) > CAL_ALERT_DECRATE_DIFFERENCE)
+                    {
+                        m_lastCalibrationIssue = CI_Different;
+                        detailInfo = wxString::Format("Current/previous Dec rate ratio is %0.3f", oldCal.yRate / newDecRate);
+                    }
                 }
             }
-            else
-                if (oldCal.yRate != 0.)                   // Might have had Dec guiding disabled
-                    m_lastCalibrationIssue = CI_Different;
         }
     }
 
@@ -881,6 +885,8 @@ bool Scope::BeginCalibration(const PHD_Point& currentLocation)
         m_calibrationState = CALIBRATION_STATE_GO_WEST;
         m_calibrationDetails.raSteps.clear();
         m_calibrationDetails.decSteps.clear();
+        m_raSteps = 0;
+        m_decSteps = 0;
         m_calibrationDetails.lastIssue = CI_None;
     }
     catch (const wxString& Msg)

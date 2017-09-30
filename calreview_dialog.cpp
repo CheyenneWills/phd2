@@ -246,7 +246,7 @@ void CalReviewDialog::CreateDataGrids(wxPanel* parentPanel, wxSizer* parentHSize
     else
         calGrid->SetCellValue(row, col++, _("X rate:"));
     if (validDetails)
-        calGrid->SetCellValue(row, col++, wxString::Format("%0.3f %s\n%0.3f %s", calBaseline.xRate * 1000 * calDetails.imageScale * calBaseline.binning, ARCSECPERSEC,
+        calGrid->SetCellValue(row, col++, wxString::Format("%0.3f %s\n%0.3f %s", calBaseline.xRate * 1000 * calDetails.imageScale, ARCSECPERSEC,
             calBaseline.xRate * 1000, PXPERSEC));
     else
         calGrid->SetCellValue(row, col++, wxString::Format("%0.3f %s", calBaseline.xRate * 1000, PXPERSEC));      // just px/sec with no image scale data
@@ -257,7 +257,7 @@ void CalReviewDialog::CreateDataGrids(wxPanel* parentPanel, wxSizer* parentHSize
     if (calBaseline.yRate != CALIBRATION_RATE_UNCALIBRATED)
     {
         if (validDetails)
-            calGrid->SetCellValue(row, col++, wxString::Format("%0.3f %s\n%0.3f %s", calBaseline.yRate * 1000 * calDetails.imageScale * calBaseline.binning, ARCSECPERSEC,
+            calGrid->SetCellValue(row, col++, wxString::Format("%0.3f %s\n%0.3f %s", calBaseline.yRate * 1000 * calDetails.imageScale, ARCSECPERSEC,
                 calBaseline.yRate * 1000, PXPERSEC));
         else
             calGrid->SetCellValue(row, col++, wxString::Format("%0.3f %s", calBaseline.yRate * 1000, PXPERSEC));      // just px/sec with no image scale data
@@ -483,7 +483,7 @@ wxBitmap CalReviewDialog::CreateGraph(bool AO)
     memDC.SetPen(decPen);
     memDC.SetBrush(decBrush);
     ptRadius = 2;
-    if (calDetails.decStepCount > 0)
+    if (calDetails.decStepCount > 0 && calDetails.decSteps.size() > 0)      // redundant, protection against old bug
     {
     for (int i = 0; i < (int) calDetails.decSteps.size(); i++)
         {
@@ -624,8 +624,8 @@ void CalSanityDialog::CreateDataGrids(wxPanel* parentPanel, wxSizer* parentHSize
     wxString raSteps = wxString::Format("%d", m_calDetails.raStepCount);
     wxString decSteps = wxString::Format("%d", m_calDetails.decStepCount);
     wxString oldAngleDelta;
-    double newRARate = m_newParams.xRate * 1000;                          // px per sec for UI purposes
-    double newDecRate = m_newParams.yRate * 1000;
+    double newRARate = m_newParams.xRate;
+    double newDecRate = m_newParams.yRate;
     double imageScale = m_calDetails.imageScale;
     bool oldValid = m_oldParams.isValid;
 
@@ -697,7 +697,7 @@ void CalSanityDialog::CreateDataGrids(wxPanel* parentPanel, wxSizer* parentHSize
         {
             pGrid->SetCellValue(row, col++, _("This declination rate:"));
             if (newDecRate != CALIBRATION_RATE_UNCALIBRATED)
-                pGrid->SetCellValue(row, col++, wxString::Format(_("%0.3f a-s/sec\n%0.3f px/sec"), newDecRate * imageScale, newDecRate));
+                pGrid->SetCellValue(row, col++, wxString::Format(_("%0.3f a-s/sec\n%0.3f px/sec"), newDecRate * 1000 * imageScale, newDecRate * 1000));
             else
                 pGrid->SetCellValue(row, col++, NA_STR);
             pGrid->SetCellValue(row, col++, _("Previous declination rate:"));
@@ -711,10 +711,10 @@ void CalSanityDialog::CreateDataGrids(wxPanel* parentPanel, wxSizer* parentHSize
         else
         {
             pGrid->SetCellValue(row, col++, _("RA rate:"));
-            pGrid->SetCellValue(row, col++, wxString::Format(_("%0.3f a-s/sec\n%0.3f px/sec"), newRARate * imageScale, newRARate));
+            pGrid->SetCellValue(row, col++, wxString::Format(_("%0.3f a-s/sec\n%0.3f px/sec"), newRARate * 1000 * imageScale, newRARate * 1000));
             pGrid->SetCellValue(row, col++, _("Declination rate:"));
             if (newDecRate != CALIBRATION_RATE_UNCALIBRATED)
-                pGrid->SetCellValue(row, col++, wxString::Format(_("%0.3f a-s/sec\n%0.3f px/sec"), newDecRate * imageScale, newDecRate));
+                pGrid->SetCellValue(row, col++, wxString::Format(_("%0.3f a-s/sec\n%0.3f px/sec"), newDecRate * 1000 *  imageScale, newDecRate * 1000));
             else
                 pGrid->SetCellValue(row, col++, NA_STR);
             if (m_issue == CI_Rates)

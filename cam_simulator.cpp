@@ -1255,7 +1255,9 @@ bool CameraSimulator::Capture(int duration, usImage& img, int options, const wxR
 
 bool CameraSimulator::ST4PulseGuideScope(int direction, int duration)
 {
-    double d = SimCamParams::guide_rate * duration / (1000.0 * SimCamParams::image_scale);
+    // Following must take into account how the render_star function works.  Render_star uses camera binning explicitly, so
+    // relying only on image scale in computing d creates distances that are too small by a factor of <binning>
+    double d = SimCamParams::guide_rate * Binning * duration / (1000.0 * SimCamParams::image_scale);
 
     // simulate RA motion scaling according to declination
     if (direction == WEST || direction == EAST)
@@ -1463,8 +1465,9 @@ static wxSlider *NewSlider(wxWindow *parent, int val, int minval, int maxval, co
 static wxSpinCtrlDouble *NewSpinner(wxWindow *parent, double val, double minval, double maxval, double inc,
     const wxString& tooltip)
 {
-    wxSpinCtrlDouble *pNewCtrl = new wxSpinCtrlDouble(parent, wxID_ANY, _T("foo2"), wxPoint(-1, -1),
-        wxDefaultSize, wxSP_ARROW_KEYS, minval, maxval, val, inc);
+    wxSize sz = pFrame->GetTextExtent(wxString::Format("%.2f", maxval * 10.));
+    wxSpinCtrlDouble *pNewCtrl = pFrame->MakeSpinCtrlDouble(parent, wxID_ANY, wxEmptyString, wxDefaultPosition,
+        sz, wxSP_ARROW_KEYS, minval, maxval, val, inc);
     pNewCtrl->SetDigits(2);
     pNewCtrl->SetToolTip(tooltip);
     return pNewCtrl;
